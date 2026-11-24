@@ -15,6 +15,6 @@ venv/
 *.log
 
 # Generated experiment records and reports remain on disk.
-/benchmark4/reports/
-/benchmark4/datasets/*/artifacts/
-/benchmark4/datasets/*/cases/
+/reports/
+/datasets/*/artifacts/
+/datasets/*/cases/

@@ -12,6 +12,7 @@ from benchmark4.harness.stage1_errors import EnvError
 
 ROOT=Path(__file__).resolve().parents[2]/'datasets/refund_pilot'
 CASE='C01_refund_display_contract';BASE=ROOT/'cases'/CASE
+CONFIG=Path(__file__).resolve().parents[1]/'config.yaml'
 
 
 def rubric():
@@ -88,7 +89,7 @@ class MockProvider:
 
 
 def test_full_offline_pairing_anchor_reuse_and_board(tmp_path):
- config=read(Path('benchmark4/harness/config.yaml'));provider=MockProvider();contexts=[]
+ config=read(CONFIG);provider=MockProvider();contexts=[]
  def coding(seed,memory,context,provider,tokenizer,guard,output):
   contexts.append(memory)
   # Probe the actual shared model/budget seam with a Mock response.
@@ -110,7 +111,7 @@ def test_full_offline_pairing_anchor_reuse_and_board(tmp_path):
 
 def test_env_abort_saves_partial_board_and_frozen_config_enforced(tmp_path):
  def coding(*args):return {'outcome':'env_error','turns':0}
- config=read(Path('benchmark4/harness/config.yaml'));provider=MockProvider()
+ config=read(CONFIG);provider=MockProvider()
  evaluate_memories(ROOT,CASE,{'long_context':LongContextConcatAdapter()},provider,Utf8BoundTokenizer(),BudgetGuard(100000,enabled=True),
   repeats=1,config=config,rubric=read(BASE/'whitebox_rubric.json'),output=tmp_path/'env',coding_executor=coding)
  report=read(tmp_path/'env/report.json');assert not report['complete'] and len(provider.prompts)==1
@@ -130,7 +131,7 @@ def test_provider_failure_usage_unknown_not_zero(tmp_path):
   def __call__(self,*args,**kwargs):raise EnvError('offline provider failure')
  guard=BudgetGuard(100000,enabled=True)
  evaluate_memories(ROOT,CASE,{'lc':LongContextConcatAdapter()},Broken(),Utf8BoundTokenizer(),guard,
-  repeats=1,config=read(Path('benchmark4/harness/config.yaml')),rubric=read(BASE/'whitebox_rubric.json'),output=tmp_path/'error',coding_executor=lambda *a:pytest.fail('must not start coding'))
+  repeats=1,config=read(CONFIG),rubric=read(BASE/'whitebox_rubric.json'),output=tmp_path/'error',coding_executor=lambda *a:pytest.fail('must not start coding'))
  report=read(tmp_path/'error/report.json')
  assert report['usage']['total_tokens'] is None and report['usage']['known_tokens']==0
  assert report['usage']['unconfirmed_usage'] and report['budget_accounted_tokens']>0
