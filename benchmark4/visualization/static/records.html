@@ -1,0 +1,24 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CodeTeamMem · 调用详情与 Prompt</title><link rel="stylesheet" href="/style.css"><script src="/records.js" defer></script></head>
+<body class="records-page">
+<aside class="sidebar"><div class="brand"><span class="brand-icon">M</span><div>CodeTeamMem<small>REQUEST INSPECTOR</small></div></div><a href="/" class="records-link">← 流水线进度</a><div class="side-label">已保存的 QA 运行</div><div id="record-list" class="run-list"></div><div class="sidebar-bottom"><span class="read-dot"></span> 只读调用详情<small>读取已有文件，不会重跑模型</small></div></aside>
+<main><header><div class="breadcrumb">BENCHMARK <span>/</span> REQUEST INSPECTOR</div><div id="record-connection" class="connection">连接中</div></header>
+<section class="page-title"><div><div class="eyebrow">PROMPTS · RESPONSES · EVIDENCE</div><h1>这次运行，逐条看清楚<span class="title-dot">.</span></h1><p>查看已保存的实际输入、模型原始回答、判分与 Token 用量。</p></div><span class="read-badge">◉ READ ONLY</span></section>
+<div id="record-empty" class="empty"><h2>尚无可读取的调用记录</h2><p>读取 datasets 下的 qa_calibration_runs/*.json；不包含 Mock 演示，不启动任何模型调用。</p></div>
+<div id="record-read-error" class="record-warning" role="alert" hidden></div>
+<div id="record-workspace" hidden>
+<section class="panel"><div class="panel-heading"><div><span class="eyebrow">SAVED QA RUN</span><h2 id="record-title">—</h2></div><span id="record-status" class="status-pill"></span></div>
+<div class="record-meta" id="record-meta"></div><p id="record-path" class="record-path"></p><div id="record-errors" class="record-warning" hidden></div>
+<p class="record-explanation">B0：无团队记录；B1：历史压缩记录；B2：完整结构化规则。A/B/C 是三个评测情境；实际内容以每条 Prompt 为准。</p>
+<div id="score-grid" class="score-grid"></div><p class="record-explanation">每格为“正确数 / 该格已保存请求数”，包含错误记录；下方显示报告保存的分数，不重新判分。单次模型答错不等于整个阶段失败。</p>
+<details><summary>调用配置与输入哈希</summary><pre id="record-config"></pre></details></section>
+<section class="panel"><div class="panel-heading"><div><span class="eyebrow">REQUESTS</span><h2>选择一次调用</h2></div><span id="filtered-count" class="quiet-label"></span></div>
+<div class="record-filters"><label>锚点<select id="anchor-filter"><option value="">全部</option><option>B0</option><option>B1</option><option>B2</option></select></label><label>情境<select id="context-filter"><option value="">全部</option><option>A</option><option>B</option><option>C</option></select></label><label>判分<select id="outcome-filter"><option value="">全部</option><option value="pass">正确</option><option value="model_wrong">答案不符</option><option value="parse_error">解析失败</option><option value="env_error">环境错误</option></select></label><label class="call-picker">调用记录<select id="call-picker"></select></label></div>
+<div id="call-table" class="call-table"></div></section>
+<section id="call-detail" class="panel" hidden><div class="panel-heading"><div><span class="eyebrow">SELECTED REQUEST</span><h2 id="call-title"></h2></div><a id="call-download" class="records-link inline" target="_blank" rel="noopener">打开该条 JSON ↗</a></div>
+<div id="call-meta" class="record-meta"></div>
+<div class="request-block"><div class="request-heading"><h3>输入 Prompt · 原文</h3><span>按保存记录原样展示</span></div><pre id="prompt-text" class="prompt-text"></pre><details id="prompt-structured"><summary>展开结构化阅读视图（仅格式化 JSON）</summary><pre id="prompt-formatted"></pre></details></div>
+<div class="answer-grid"><div class="request-block"><div class="request-heading"><h3>模型原始回答</h3></div><pre id="raw-answer"></pre></div><div class="request-block"><div class="request-heading"><h3>预期答案（评分侧）</h3></div><pre id="expected-answer"></pre><p class="record-explanation">预期答案用于判分，不代表它被发送给了模型。</p></div></div>
+<details open><summary>解析后的回答与记录判分</summary><pre id="parsed-answer"></pre></details>
+<p class="record-explanation">没有保存的字段显示“未记录”，不从当前代码或 seed 重建。这里展示的 Prompt 是保存的请求输入内容；完整 HTTP 报文及模型内部推理未记录。</p></section>
+<footer><span>来源：已有 QA 调用文件 · 不执行模型请求</span><span>每秒检查记录变化</span></footer>
+</div></main></body></html>

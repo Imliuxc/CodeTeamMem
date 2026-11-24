@@ -1,0 +1,5 @@
+{
+  "policy_id": "unified-48k-50steps-300k-v1",
+  "sha256": "1f2583130119015a20959670c9e28d8b2c8831fe14c90e7f57bf3228f0c3cf8e",
+  "scope": "Common future QA/Coding execution parameters; no authorization for new model calls; historical configs remain references."
+}

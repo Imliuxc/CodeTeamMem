@@ -1,0 +1,375 @@
+# DRAFT：需用户审批；字段、C情境、配方均未做真实QA校准。
+id: C01_refund_display_contract
+status: STAGE1_SCREEN_AUTHORIZED
+design_notes:
+  confirmed: 逐执行展示、按售后分组；商家逐笔对账；只纳入明确确认受理的执行，受理后失败仍保留。
+  proposed: 商家端列表、新增功能任务、E2+C回执语义变化、接口字段和样例均为本轮拟议，须用户审批。
+  screen_scope: Stage 1 仅公开政策和数据结构下的 QA 初筛，不证明真实代码不可解。
+  anchor_scope: B1 为缺失关键前提的历史压缩共识，B2 为完整结构化 gold 的特权上界；不是 Stage 3 实际原文效果。
+  uncertainty: B1 可能根据当前协议自行纠正，C负迁移门槛尚未经模型验证，不保证达标。
+  boundary: 同一执行更新原行；未确认受理暂不纳入，不判定为拒绝；不测试资金是否真正变动。
+scenario: fe_be_coordination
+dimension: cross_role_contract
+code_mode: mode_2
+difficulty: easy
+roles:
+- pm_lead
+- dev_backend
+- dev_frontend
+- qa_engineer
+evolution:
+- E2
+- E4
+history_evolution: []
+history_overwrites: 0
+obstacles:
+- O1
+- O2
+- O3
+evolution_design:
+  E2: C中回执可在受理前分配，历史receipt_ref非空即受理的前提失效；按公开明确确认字段回退。
+  E4: B只增加与退款选择无关的界面配色元数据，正确集合应与A相同。
+target_slot: refunds.display_contract.select_exec_ids
+watched_files:
+- public_policy.md
+- repo_base/shared/refund_schema.py
+- repo_base/refunds/display_contract.py
+alternatives:
+- 每张售后展示一条最新受理执行，其他执行在详情中查询；同样能支持逐笔核对。
+competing_rules:
+- 售后级汇总，选每单最新受理执行
+- 所有本地执行尝试均独立展示
+- 仅明确受理的执行独立展示，并按售后分组
+public_policy:
+  document_id: public_policy.md#refund-list-default
+  default_rule: 没有团队专门约定时，退款列表按售后申请汇总；每张售后只选最新确认受理的执行作为代表行。详情可查询全部执行。
+  ordering: exec_id 的数字部分代表创建顺序，仅用于确定最新执行。
+  acceptance_evidence: acceptance_ack == ACCEPTED 或 query_acceptance == ACCEPTED 表示通道明确确认受理。HTTP
+    200、提交完成或请求超时本身不构成受理证明。
+  receipt_reference: receipt_ref 是通道记录引用；其分配时点由当前协议的 receipt_assignment 描述，不能脱离协议含义判定。
+  scope: 这里的列表粒度是无历史覆盖时的常规默认政策，不声明本项目历史上是否另有约定。
+data_schema:
+  executions: 当前观测中的退款执行数组；按exec_id创建顺序排列。
+  exec_id: 平台侧唯一执行标识；同一次执行更新标识不变，重新执行使用新标识。
+  after_sale_id: 所属售后申请标识；多个执行可以属于同一申请。
+  receipt_ref: 通道记录引用，可为空；分配语义见当前protocol。
+  acceptance_ack: 直接响应中的明确受理结论：ACCEPTED、REJECTED或null。
+  query_acceptance: 后续查询获得的受理结论：ACCEPTED、NOT_ACCEPTED或UNKNOWN。
+  execution_result: 执行结果；与是否曾被受理是两个维度，FAILED不抹除既有受理事实。
+  http_status: HTTP传输状态，不等同业务受理状态。
+fallback:
+  rule: 当前协议不能再用receipt_ref推断受理时，按公开明确确认字段判定；缺少确认即证据不足。该证据回退不撤销已确定的逐执行展示契约。
+  source: public_document
+  reference: public_policy.md#refund-list-default
+gold:
+  rule: 商家退款列表选择明确确认受理的每次执行，按exec_id独立展示查询，after_sale_id只负责分组。
+  key_premise: 商家按渠道执行逐笔对账；旧receipt_ref非空经验仅在回执于受理后分配时成立，不能跨协议复用。
+  scope_boundary: 受理证据为ack或查询明确ACCEPTED；受理后FAILED仍展示；同执行更新原行，重发被受理新增行。该回执推断的前提不成立时，证据回退到公开确认字段，不改变列表粒度；未知暂不纳入而非判拒绝。
+  dead_end: 否决售后单行汇总代替独立执行；否决把全部本地尝试纳入；否决脱离回执分配前提沿用receipt_ref非空经验。
+external_profiles:
+  T0_history:
+    default:
+      protocol: &id001
+        name: receipt_v1
+        receipt_assignment: after_acceptance
+        acceptance_ack_values: &id002
+        - ACCEPTED
+        - REJECTED
+        - null
+        query_acceptance_values: &id003
+        - ACCEPTED
+        - NOT_ACCEPTED
+        - UNKNOWN
+      executions:
+      - exec_id: E01
+        after_sale_id: S01
+        receipt_ref: CH01
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: FAILED
+        http_status: 200
+      - exec_id: E02
+        after_sale_id: S01
+        receipt_ref: CH02
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: PROCESSING
+        http_status: 200
+      - exec_id: E03
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: null
+        query_acceptance: UNKNOWN
+        execution_result: PENDING_CONFIRMATION
+        http_status: 200
+      - exec_id: E04
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: REJECTED
+        query_acceptance: UNKNOWN
+        execution_result: REJECTED
+        http_status: 200
+      - exec_id: E05
+        after_sale_id: S02
+        receipt_ref: CH05
+        acceptance_ack: null
+        query_acceptance: ACCEPTED
+        execution_result: SUCCEEDED
+        http_status: 200
+    routes: []
+  A_static:
+    default:
+      protocol: *id001
+      executions:
+      - exec_id: E01
+        after_sale_id: S01
+        receipt_ref: CH01
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: FAILED
+        http_status: 200
+      - exec_id: E02
+        after_sale_id: S01
+        receipt_ref: CH02
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: PROCESSING
+        http_status: 200
+      - exec_id: E03
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: null
+        query_acceptance: UNKNOWN
+        execution_result: PENDING_CONFIRMATION
+        http_status: 200
+      - exec_id: E04
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: REJECTED
+        query_acceptance: UNKNOWN
+        execution_result: REJECTED
+        http_status: 200
+      - exec_id: E05
+        after_sale_id: S02
+        receipt_ref: CH05
+        acceptance_ack: null
+        query_acceptance: ACCEPTED
+        execution_result: SUCCEEDED
+        http_status: 200
+    routes: []
+  B_irrelevant:
+    default:
+      protocol: *id001
+      executions:
+      - exec_id: E01
+        after_sale_id: S01
+        receipt_ref: CH01
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: FAILED
+        http_status: 200
+      - exec_id: E02
+        after_sale_id: S01
+        receipt_ref: CH02
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: PROCESSING
+        http_status: 200
+      - exec_id: E03
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: null
+        query_acceptance: UNKNOWN
+        execution_result: PENDING_CONFIRMATION
+        http_status: 200
+      - exec_id: E04
+        after_sale_id: S02
+        receipt_ref: null
+        acceptance_ack: REJECTED
+        query_acceptance: UNKNOWN
+        execution_result: REJECTED
+        http_status: 200
+      - exec_id: E05
+        after_sale_id: S02
+        receipt_ref: CH05
+        acceptance_ack: null
+        query_acceptance: ACCEPTED
+        execution_result: SUCCEEDED
+        http_status: 200
+      ui_theme: blue
+    routes: []
+  C_changed:
+    default:
+      protocol:
+        name: receipt_v2
+        receipt_assignment: on_request_registration
+        acceptance_ack_values: *id002
+        query_acceptance_values: *id003
+      executions:
+      - exec_id: E01
+        after_sale_id: S01
+        receipt_ref: CH01
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: FAILED
+        http_status: 200
+      - exec_id: E02
+        after_sale_id: S01
+        receipt_ref: CH02
+        acceptance_ack: ACCEPTED
+        query_acceptance: UNKNOWN
+        execution_result: PROCESSING
+        http_status: 200
+      - exec_id: E03
+        after_sale_id: S02
+        receipt_ref: REG03
+        acceptance_ack: null
+        query_acceptance: UNKNOWN
+        execution_result: PENDING_CONFIRMATION
+        http_status: 200
+      - exec_id: E04
+        after_sale_id: S02
+        receipt_ref: REG04
+        acceptance_ack: REJECTED
+        query_acceptance: UNKNOWN
+        execution_result: REJECTED
+        http_status: 200
+      - exec_id: E05
+        after_sale_id: S02
+        receipt_ref: CH05
+        acceptance_ack: null
+        query_acceptance: ACCEPTED
+        execution_result: SUCCEEDED
+        http_status: 200
+    routes: []
+facts:
+- id: merchant_grain
+  role: pm_lead
+  unlock_act: 1
+  text: 商家按执行记录核对渠道处理结果，不采用售后单行替代逐执行展示的提案。
+- id: grouping
+  role: dev_frontend
+  unlock_act: 1
+  text: 售后申请仍是分组层级，执行行需要独立身份供定位和查询。
+- id: receipt_premise
+  role: dev_backend
+  unlock_act: 2
+  text: 当前历史阶段的receipt_v1仅在受理后分配receipt_ref，因此非空回执可作为本协议下的受理证据；协议变化时这个推断不保证成立。
+- id: proof_boundary
+  role: qa_engineer
+  unlock_act: 2
+  text: 受理确认与执行结果分开；明确ack或查询可证明受理，传输成功或未知不能代替。受理后失败仍需保留。
+- id: identity
+  role: dev_frontend
+  unlock_act: 3
+  text: 执行更新保持同一行；重新发起的执行被受理后另增一行，归在原售后分组。
+- id: decision
+  role: pm_lead
+  unlock_act: 3
+  text: 按前面已对齐的逐执行方案推进；全部本地尝试都进列表的候选也否决，证据边界依接口约定。
+acts:
+- id: 1
+  min_turns: 2
+  max_turns: 4
+  exit_condition: fact_ids
+  required_facts:
+  - merchant_grain
+  - grouping
+- id: 2
+  min_turns: 2
+  max_turns: 4
+  exit_condition: fact_ids
+  required_facts:
+  - receipt_premise
+  - proof_boundary
+- id: 3
+  min_turns: 2
+  max_turns: 4
+  exit_condition: fact_ids
+  required_facts:
+  - identity
+  - decision
+banned_meta_words:
+- gold
+- benchmark
+- unlock_act
+- FactLedger
+qa:
+  query: {}
+  output_schema:
+    exec_ids: unique_string_list
+  dialogues:
+    A:
+      turn_1: 请根据提供的公开说明、数据结构、团队记录及当前观测，完成退款列表的记录选择。
+      turn_2: 返回应进入列表的执行标识集合，严格使用指定 JSON 格式；不要解释。
+    B:
+      turn_1: 请根据提供的公开说明、数据结构、团队记录及当前观测，完成退款列表的记录选择。
+      turn_2: 返回应进入列表的执行标识集合，严格使用指定 JSON 格式；不要解释。
+    C:
+      turn_1: 请根据提供的公开说明、数据结构、团队记录及当前观测，完成退款列表的记录选择。
+      turn_2: 返回应进入列表的执行标识集合，严格使用指定 JSON 格式；不要解释。
+  anchor_contexts:
+    B0: ''
+    B1: 历史压缩记录：商家按执行逐笔对账，列表按exec_id独立列出，after_sale_id用于分组。团队之前使用receipt_ref非空来选出应显示的执行，执行失败后记录继续保留。
+    B2: '完整团队记录：商家退款列表选择明确确认受理的每次执行，按exec_id独立展示查询，after_sale_id只负责分组。
+
+      商家按渠道执行逐笔对账；旧receipt_ref非空经验仅在回执于受理后分配时成立，不能跨协议复用。
+
+      受理证据为ack或查询明确ACCEPTED；受理后FAILED仍展示；同执行更新原行，重发被受理新增行。该回执推断的前提不成立时，证据回退到公开确认字段，不改变列表粒度；未知暂不纳入而非判拒绝。
+
+      否决售后单行汇总代替独立执行；否决把全部本地尝试纳入；否决脱离回执分配前提沿用receipt_ref非空经验。'
+  expected:
+    A:
+      exec_ids:
+      - E01
+      - E02
+      - E05
+    B:
+      exec_ids:
+      - E01
+      - E02
+      - E05
+    C:
+      exec_ids:
+      - E01
+      - E02
+      - E05
+  expected_evidence:
+    E01: 明确受理后失败，保留。
+    E02: 明确受理处理中，独立于E01保留。
+    E03: HTTP200但ack空、查询UNKNOWN，排除；C虽有预分配回执也不改变证据结论。
+    E04: 明确拒绝受理，排除；C有预分配回执仍不能纳入。
+    E05: 后续查询确认受理，纳入。
+  control_reference:
+    B0_default_expected:
+      A:
+        exec_ids:
+        - E02
+        - E05
+      B:
+        exec_ids:
+        - E02
+        - E05
+      C:
+        exec_ids:
+        - E02
+        - E05
+    B1_unadapted_expected:
+      A:
+        exec_ids:
+        - E01
+        - E02
+        - E05
+      B:
+        exec_ids:
+        - E01
+        - E02
+        - E05
+      C:
+        exec_ids:
+        - E01
+        - E02
+        - E03
+        - E04
+        - E05
+    notice: 以上是规则演算的对照输出，不是模型实测；模型可以自行调整，不强迫产生错误。

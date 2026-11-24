@@ -1,0 +1,7 @@
+# Independent service config; mount as world_profile.yaml only in service process.
+profiles:
+  T0_history: {default: {available: true}, routes: []}
+  A_static: {default: {available: true}, routes: []}
+  B_irrelevant: {default: {available: true}, routes: []}
+  C_changed: {default: {available: false}, routes: []}
+# route schema: {match: {amount: 0, date: YYYY-MM-DD, channel: placeholder, protocol: placeholder}, response: {available: true}}

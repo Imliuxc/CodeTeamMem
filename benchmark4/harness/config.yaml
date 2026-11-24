@@ -1,0 +1,38 @@
+# Frozen common execution policy. Change only by an explicit reviewed decision.
+policy_id: unified-48k-50steps-300k-v1
+execution:
+  max_input_tokens: &input 48000
+  max_turns: &turns 50
+  trial_token_limit: &trial 300000
+  no_edit_warn: &warn 15
+  no_edit_stop: &stop 25
+  stall_limit: &stall 6
+stage_token_limits: {"1": 150000, "2": 1500000, "3": 100000}
+stage1:
+  repeats: 3
+  max_output_tokens: 512
+  max_input_tokens: *input
+  prompt_overhead_tokens: 64
+  temperature: 0
+  infrastructure_retries: 2
+stage2:
+  network_subnet: 10.254.240.0/28
+  repeats: 3
+  max_turns: *turns
+  stall_limit: *stall
+  exploration_limit: null # novel files/pages never count as repeated-error stalls
+  no_edit_warn: *warn
+  no_edit_stop: *stop
+  trial_token_limit: *trial
+  max_input_tokens: *input
+  max_output_tokens: 2048
+  prompt_overhead_tokens: 64
+  tool_page_bytes: 4096
+  tool_max_bytes: 65536
+  command_timeout_seconds: 60
+  infrastructure_retries: 2
+  temperature: 0
+  workspace_image: codeteammem-workspace:stage2
+  service_image: codeteammem-world:stage2
+stage4:
+  total_tokens: 6000000 # batch ceiling, separate from the 300k per paired trial

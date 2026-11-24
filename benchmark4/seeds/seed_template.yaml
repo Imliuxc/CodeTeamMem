@@ -1,0 +1,34 @@
+# 空配方：复制后共同设计，不可直接运行；不含业务题。
+id: null
+scenario: null # fe_be_coordination | feature_evolution | cross_role_debugging | task_handoff | agent_onboarding
+dimension: null # 见 SPEC.md 五维
+code_mode: null # mode_1 | mode_2；S4 强制 mode_2，S5 默认 mode_1
+difficulty: easy
+target_slot: null # 同数据集唯一
+roles: [pm_lead, dev_backend, dev_frontend]
+alternatives: [] # 至少一个同样合理的工程替代方案，待反事实实证
+evolution: [E2, E4]
+history_evolution: [] # mode_1 不得含 E1
+history_overwrites: 0
+obstacles: [O1, O2, O3]
+competing_rules: [] # 包括废案，1..3
+fallback:
+  rule: null
+  source: public_document # 或 new_environment
+  reference: null
+gold:
+  rule: null
+  key_premise: null
+  scope_boundary: null
+  dead_end: null
+external_profiles:
+  T0_history: {default: {}, routes: []}
+  A_static: {default: {}, routes: []}
+  B_irrelevant: {default: {}, routes: []}
+  C_changed: {default: {}, routes: []}
+facts: []
+# 分幕格式示例（仅结构占位，不是业务知识）：
+# - {id: fact_id, role: dev_backend, unlock_act: 2, text: 待共同设计}
+acts: []
+# - {id: 1, min_turns: 2, max_turns: 4, exit_condition: fact_ids, required_facts: [fact_id]}
+banned_meta_words: [gold, benchmark, unlock_act, FactLedger]

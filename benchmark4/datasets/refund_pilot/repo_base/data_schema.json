@@ -1,0 +1,10 @@
+{
+  "acceptance_ack": "直接响应中的明确受理结论：ACCEPTED、REJECTED或null。",
+  "after_sale_id": "所属售后申请标识；多个执行可以属于同一申请。",
+  "exec_id": "平台侧唯一执行标识；同一次执行更新标识不变，重新执行使用新标识。",
+  "execution_result": "执行结果；与是否曾被受理是两个维度，FAILED不抹除既有受理事实。",
+  "executions": "当前观测中的退款执行数组；按exec_id创建顺序排列。",
+  "http_status": "HTTP传输状态，不等同业务受理状态。",
+  "query_acceptance": "后续查询获得的受理结论：ACCEPTED、NOT_ACCEPTED或UNKNOWN。",
+  "receipt_ref": "通道记录引用，可为空；分配语义见当前protocol。"
+}

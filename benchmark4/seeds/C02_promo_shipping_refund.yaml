@@ -1,0 +1,473 @@
+# DRAFT: 待用户审批；所有业务规则均为拟议，未作真实QA或Coding校准。
+id: C02_promo_shipping_refund
+dataset_id: refund_pilot
+status: DRAFT_AWAITING_APPROVAL
+scenario: feature_evolution
+dimension: unwritten_business_constraint
+code_mode: mode_2
+difficulty: medium
+roles:
+- pm_lead
+- dev_backend
+- dev_frontend
+- qa_engineer
+evolution:
+- E2
+- E4
+history_evolution: []
+history_overwrites: 0
+obstacles:
+- O1
+- O2
+- O3
+- O5
+target_slot: refunds.promo_shipping.shipping_clawback_cents
+watched_files:
+- repo_base/refunds/promo_shipping.py
+- repo_base/shared/promo_shipping_schema.py
+- promo_shipping_policy.md
+alternatives:
+- 对所有保留商品按用户实付金额判断免邮资格，同样是合理的促销方案。
+competing_rules:
+- 全部商品剩余实付额判断门槛
+- 仅商家结算商品剩余标价判断门槛
+- 原订单永久保留免邮补贴
+public_policy:
+  document_id: promo_shipping_policy.md#default
+  default_rule: 没有活动专门约定时，免邮活动的退货后资格按全部保留商品实付额判断；低于活动门槛且承运补贴仍需商家承担时，追回原补贴金额。
+  contract_time: 有明确冻结合同快照的旧订单使用下单时的补贴承担状态；无冻结快照的新订单使用当前客观状态。
+  fallback: 承运合同不再向商家追收该笔补贴时，不向用户追加补贴追回款。非免邮订单不产生此项；不涉及商品退款本金。
+  unknown_data: 必填金额或合同状态缺失应报输入错误，不猜测0；所有金额使用整数分。
+data_schema:
+  orders: 本次待核算订单数组；只核算返还/补收的运费补贴，输入已给出保留商品金额。
+  order_id: 唯一订单标识。
+  promo_waived: 下单是否享受活动免邮。
+  shipping_subsidy_cents: 原活动代付的运费补贴。
+  retained_lines: 保留商品列表。
+  line_id: 商品行标识。
+  settlement_owner: 实际结算方，STORE为商家、BRAND为品牌方；不声明活动计入范围。
+  retained_list_cents: 保留数量对应的原标价，不减优惠。
+  retained_paid_cents: 保留数量对应的实付金额。
+  checkout_recovery: 冻结的下单承运合同是否仍需向商家追收补贴；null表示使用当前状态。
+  promo_threshold_cents: 当前活动金额门槛。
+  carrier_recovery_required: 当前承运合同的客观补贴追收状态，不描述团队活动资格规矩。
+fallback:
+  rule: 无补贴追收责任则新订单不补收；旧订单按冻结合同责任核算；其他仍按公开常规政策回退。
+  source: public_document
+  reference: promo_shipping_policy.md#default
+gold:
+  rule: 已享免邮的订单按保留商品重新核算补贴资格；只计STORE结算行的剩余原标价，不计BRAND结算行或实付折扣口径。低于10000分且有该订单的补贴追收责任时追回800分。
+  key_premise: 这是商家承担的促销预算，只补贴STORE结算商品；资格基于活动账本原标价而非支付净额。追回金额成立还依赖该订单的承运合同追收责任。
+  scope_boundary: 等于门槛不追回；非免邮订单为0；不改商品本金退款。旧订单使用冻结下单合同，新订单用当前合同状态；当前追收责任解除仅影响未冻结的新订单。
+  dead_end: 否决全部商品实付额统一判断；否决无论剩余资格均永久免邮；否决在合同责任消失后仍对新订单机械追回。
+facts:
+- id: amount_basis
+  role: pm_lead
+  unlock_act: 1
+  text: 本活动的门槛走原标价账本，不跟支付优惠后的净额走；全部商品实付额统一判断的提议不采用。
+- id: scope_source
+  role: dev_backend
+  unlock_act: 2
+  text: 商家活动预算只覆盖STORE结算的商品行；BRAND结算行另有预算，不能拿来凑商家这笔门槛。
+- id: money_boundary
+  role: dev_frontend
+  unlock_act: 2
+  text: 前端提供的是保留数量对应的金额，按整数分求和，不重复乘原购买数量；等于门槛仍保留免邮资格。
+- id: carrier_premise
+  role: qa_engineer
+  unlock_act: 3
+  text: 补收成立的条件是这笔承运补贴确实仍由商家承担；责任解除后不能继续对新订单补收。
+- id: old_boundary
+  role: dev_backend
+  unlock_act: 4
+  text: 旧单冻结的下单合同责任仍有效，不能被当前新合同覆盖；新单无冻结快照才看当前责任状态。
+- id: final_denial
+  role: pm_lead
+  unlock_act: 4
+  text: 按前面两种口径和合同约定接入；原订单永远免邮的候选否决，非活动订单也不能收这笔钱。
+acts:
+- id: 1
+  min_turns: 6
+  max_turns: 8
+  exit_condition: fact_ids
+  required_facts:
+  - amount_basis
+- id: 2
+  min_turns: 6
+  max_turns: 8
+  exit_condition: fact_ids
+  required_facts:
+  - scope_source
+  - money_boundary
+- id: 3
+  min_turns: 6
+  max_turns: 8
+  exit_condition: fact_ids
+  required_facts:
+  - carrier_premise
+- id: 4
+  min_turns: 6
+  max_turns: 8
+  exit_condition: fact_ids
+  required_facts:
+  - old_boundary
+  - final_denial
+banned_meta_words:
+- gold
+- benchmark
+- unlock_act
+- FactLedger
+- 团队记忆
+- 关键前提
+- 适用边界
+- 废案
+- 反事实
+- 锚点
+construction_notes:
+  scope: 仅配方草案，无业务代码/容器/真实模型校准；不修改C01的public_policy或shared/refund_schema.py。
+  private_dependencies:
+  - 原标价而非实付
+  - 仅STORE而非所有结算行
+  single_role_law: 上述必要事实分属pm_lead与dev_backend；仅计数不能证明信息不足，后续需完整盲测。
+  tests_base_plan: 仅测输入类型、金额非负、缺失字段报错和接口形状；不写默认业务选择的金标准，不以基础测试通过声称任务完成；隐藏测试独立验证专门规则与两种合同快照。
+  stage3_blockers: 草案要求复杂流后续补齐后才能生产；计划至少24条对话、独立噪声幕、候选推进/否决分幕及去重/实体隔离硬检，本轮不实现。
+  risk: B0是否会用常识猜中、B1是否自行修复C以及单角色是否可推出完整集合均未经实测。
+external_profiles:
+  T0_history:
+    default:
+      promo_threshold_cents: 10000
+      carrier_recovery_required: true
+      orders:
+      - order_id: HIST_C02_O01
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: HIST_C02_L1S
+          settlement_owner: STORE
+          retained_list_cents: 9000
+          retained_paid_cents: 6500
+        - line_id: HIST_C02_L1B
+          settlement_owner: BRAND
+          retained_list_cents: 10000
+          retained_paid_cents: 8500
+      - order_id: HIST_C02_O02
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: HIST_C02_L2S
+          settlement_owner: STORE
+          retained_list_cents: 13000
+          retained_paid_cents: 8500
+        - line_id: HIST_C02_L2B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: HIST_C02_O03
+        promo_waived: false
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: HIST_C02_L3S
+          settlement_owner: STORE
+          retained_list_cents: 6000
+          retained_paid_cents: 4500
+        - line_id: HIST_C02_L3B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: HIST_C02_O04
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: HIST_C02_L4S
+          settlement_owner: STORE
+          retained_list_cents: 8000
+          retained_paid_cents: 5500
+        - line_id: HIST_C02_L4B
+          settlement_owner: BRAND
+          retained_list_cents: 11000
+          retained_paid_cents: 9500
+      - order_id: HIST_C02_O05
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: HIST_C02_L5S
+          settlement_owner: STORE
+          retained_list_cents: 13000
+          retained_paid_cents: 8500
+        - line_id: HIST_C02_L5B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+    routes: []
+  A_static:
+    default:
+      promo_threshold_cents: 10000
+      carrier_recovery_required: true
+      orders:
+      - order_id: EVAL_C02_O01
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L1S
+          settlement_owner: STORE
+          retained_list_cents: 8000
+          retained_paid_cents: 6000
+        - line_id: EVAL_C02_L1B
+          settlement_owner: BRAND
+          retained_list_cents: 9000
+          retained_paid_cents: 8000
+      - order_id: EVAL_C02_O02
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L2S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L2B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O03
+        promo_waived: false
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L3S
+          settlement_owner: STORE
+          retained_list_cents: 5000
+          retained_paid_cents: 4000
+        - line_id: EVAL_C02_L3B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O04
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L4S
+          settlement_owner: STORE
+          retained_list_cents: 7000
+          retained_paid_cents: 5000
+        - line_id: EVAL_C02_L4B
+          settlement_owner: BRAND
+          retained_list_cents: 10000
+          retained_paid_cents: 9000
+      - order_id: EVAL_C02_O05
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L5S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L5B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+    routes: []
+  B_irrelevant:
+    default:
+      promo_threshold_cents: 10000
+      carrier_recovery_required: true
+      orders:
+      - order_id: EVAL_C02_O01
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L1S
+          settlement_owner: STORE
+          retained_list_cents: 8000
+          retained_paid_cents: 6000
+        - line_id: EVAL_C02_L1B
+          settlement_owner: BRAND
+          retained_list_cents: 9000
+          retained_paid_cents: 8000
+      - order_id: EVAL_C02_O02
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L2S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L2B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O03
+        promo_waived: false
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L3S
+          settlement_owner: STORE
+          retained_list_cents: 5000
+          retained_paid_cents: 4000
+        - line_id: EVAL_C02_L3B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O04
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L4S
+          settlement_owner: STORE
+          retained_list_cents: 7000
+          retained_paid_cents: 5000
+        - line_id: EVAL_C02_L4B
+          settlement_owner: BRAND
+          retained_list_cents: 10000
+          retained_paid_cents: 9000
+      - order_id: EVAL_C02_O05
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L5S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L5B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      ui_color: blue
+    routes: []
+  C_changed:
+    default:
+      promo_threshold_cents: 10000
+      carrier_recovery_required: false
+      orders:
+      - order_id: EVAL_C02_O01
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L1S
+          settlement_owner: STORE
+          retained_list_cents: 8000
+          retained_paid_cents: 6000
+        - line_id: EVAL_C02_L1B
+          settlement_owner: BRAND
+          retained_list_cents: 9000
+          retained_paid_cents: 8000
+      - order_id: EVAL_C02_O02
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L2S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L2B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O03
+        promo_waived: false
+        shipping_subsidy_cents: 800
+        checkout_recovery: null
+        retained_lines:
+        - line_id: EVAL_C02_L3S
+          settlement_owner: STORE
+          retained_list_cents: 5000
+          retained_paid_cents: 4000
+        - line_id: EVAL_C02_L3B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+      - order_id: EVAL_C02_O04
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L4S
+          settlement_owner: STORE
+          retained_list_cents: 7000
+          retained_paid_cents: 5000
+        - line_id: EVAL_C02_L4B
+          settlement_owner: BRAND
+          retained_list_cents: 10000
+          retained_paid_cents: 9000
+      - order_id: EVAL_C02_O05
+        promo_waived: true
+        shipping_subsidy_cents: 800
+        checkout_recovery: true
+        retained_lines:
+        - line_id: EVAL_C02_L5S
+          settlement_owner: STORE
+          retained_list_cents: 12000
+          retained_paid_cents: 8000
+        - line_id: EVAL_C02_L5B
+          settlement_owner: BRAND
+          retained_list_cents: 0
+          retained_paid_cents: 0
+    routes: []
+entity_partition:
+  history_prefix: HIST_C02_
+  evaluation_prefix: EVAL_C02_
+  require_disjoint: true
+  id_fields:
+  - order_id
+  - line_id
+qa:
+  query: {}
+  output_schema:
+    charges: unique_string_list
+  dialogues:
+    A:
+      turn_1: 请依据公开说明、团队记录及当前订单与合同观测，计算每张订单应追回的运费补贴。
+      turn_2: 输出charges数组，每项为order_id:整数分；包括金额为0的订单，不要解释。
+    B:
+      turn_1: 请依据公开说明、团队记录及当前订单与合同观测，计算每张订单应追回的运费补贴。
+      turn_2: 输出charges数组，每项为order_id:整数分；包括金额为0的订单，不要解释。
+    C:
+      turn_1: 请依据公开说明、团队记录及当前订单与合同观测，计算每张订单应追回的运费补贴。
+      turn_2: 输出charges数组，每项为order_id:整数分；包括金额为0的订单，不要解释。
+  anchor_contexts:
+    B0: ''
+    B1: 历史压缩记录：活动免邮门槛只计STORE结算保留商品的原标价；低于10000分追回800分，达到门槛不追回，非活动免邮订单为0。
+    B2: '已享免邮的订单按保留商品重新核算补贴资格；只计STORE结算行的剩余原标价，不计BRAND结算行或实付折扣口径。低于10000分且有该订单的补贴追收责任时追回800分。
+
+      这是商家承担的促销预算，只补贴STORE结算商品；资格基于活动账本原标价而非支付净额。追回金额成立还依赖该订单的承运合同追收责任。
+
+      等于门槛不追回；非免邮订单为0；不改商品本金退款。旧订单使用冻结下单合同，新订单用当前合同状态；当前追收责任解除仅影响未冻结的新订单。
+
+      否决全部商品实付额统一判断；否决无论剩余资格均永久免邮；否决在合同责任消失后仍对新订单机械追回。'
+  expected:
+    A:
+      charges:
+      - EVAL_C02_O01:800
+      - EVAL_C02_O02:0
+      - EVAL_C02_O03:0
+      - EVAL_C02_O04:800
+      - EVAL_C02_O05:0
+    B:
+      charges:
+      - EVAL_C02_O01:800
+      - EVAL_C02_O02:0
+      - EVAL_C02_O03:0
+      - EVAL_C02_O04:800
+      - EVAL_C02_O05:0
+    C:
+      charges:
+      - EVAL_C02_O01:0
+      - EVAL_C02_O02:0
+      - EVAL_C02_O03:0
+      - EVAL_C02_O04:800
+      - EVAL_C02_O05:0

@@ -1,0 +1,87 @@
+history_t0:
+  shared/__init__.py: ''
+  refunds/__init__.py: ''
+  shared/refund_schema.py: "def executions(snapshot):\n    rows = snapshot.get(\"\
+    executions\", [])\n    ids = [r[\"exec_id\"] for r in rows]\n    if len(set(ids))\
+    \ != len(ids):\n        raise ValueError(\"duplicate execution identifier\")\n\
+    \    return sorted(rows, key=lambda r: int(r[\"exec_id\"][1:]))\n\n\ndef confirmed(row):\n\
+    \    return row.get(\"acceptance_ack\") == \"ACCEPTED\" or row.get(\"query_acceptance\"\
+    ) == \"ACCEPTED\"\n"
+  refunds/display_contract.py: "from shared.refund_schema import executions, confirmed\n\
+    \n\ndef select_exec_ids(snapshot):\n    latest = {}\n    for row in executions(snapshot):\n\
+    \        if confirmed(row):\n            latest[row[\"after_sale_id\"]] = row[\"\
+    exec_id\"]\n    return sorted(latest.values())\n"
+  tests_base/test_schema.py: "import pytest\nfrom shared.refund_schema import executions,\
+    \ confirmed\n\n\ndef test_empty():\n    assert executions({}) == []\n\n\ndef test_duplicate_rejected():\n\
+    \    with pytest.raises(ValueError):\n        executions({\"executions\": [{\"\
+    exec_id\": \"X1\"}, {\"exec_id\": \"X1\"}]})\n\n\ndef test_evidence_fields():\n\
+    \    assert confirmed({\"acceptance_ack\": \"ACCEPTED\"})\n    assert confirmed({\"\
+    query_acceptance\": \"ACCEPTED\"})\n    assert not confirmed({\"http_status\"\
+    : 200})\n"
+  pytest.ini: '[pytest]
+
+    pythonpath = .
+
+    addopts = -p no:cacheprovider
+
+    '
+history_t1:
+  refunds/service.py: "import json\nimport os\nfrom urllib.request import Request,\
+    \ urlopen\nfrom shared.refund_schema import executions\nfrom refunds.display_contract\
+    \ import select_exec_ids\n\n\ndef fetch_snapshot():\n    request = Request(os.environ[\"\
+    WORLD_URL\"], data=b\"{}\", headers={\"Content-Type\": \"application/json\"})\n\
+    \    with urlopen(request, timeout=3) as response:\n        return json.load(response)\n\
+    \n\ndef list_refunds(snapshot):\n    chosen = set(select_exec_ids(snapshot))\n\
+    \    return [row for row in executions(snapshot) if row[\"exec_id\"] in chosen]\n\
+    \n\ndef group_refunds(snapshot):\n    groups = {}\n    for row in list_refunds(snapshot):\n\
+    \        groups.setdefault(row[\"after_sale_id\"], []).append(row)\n    return\
+    \ groups\n\n\ndef get_visible_execution(snapshot, exec_id):\n    return next((row\
+    \ for row in list_refunds(snapshot) if row[\"exec_id\"] == exec_id), None)\n"
+  tests_base/test_service.py: "from refunds.service import list_refunds, group_refunds,\
+    \ get_visible_execution\n\n\ndef test_empty_projection():\n    assert list_refunds({})\
+    \ == []\n    assert group_refunds({}) == {}\n\n\ndef test_single_execution_roundtrip():\n\
+    \    row = {\"exec_id\": \"X1\", \"after_sale_id\": \"Y1\", \"acceptance_ack\"\
+    : \"ACCEPTED\"}\n    snapshot = {\"executions\": [row]}\n    assert list_refunds(snapshot)\
+    \ == [row]\n    assert group_refunds(snapshot) == {\"Y1\": [row]}\n    assert\
+    \ get_visible_execution(snapshot, \"X1\") == row\n\n\ndef test_missing_lookup():\n\
+    \    assert get_visible_execution({}, \"X9\") is None\n"
+coding_task:
+  instruction: 完善商家退款列表的记录选择，使展示、分组和单次执行查询遵守团队历史约定，并适配当前通道。保持现有函数签名，仅修改允许的策略文件；可查询当前外部服务并运行公开基础测试。
+  writable_paths:
+  - refunds/display_contract.py
+  smoke_imports:
+  - refunds.service
+hidden_tests:
+  test_A.py: "import json\nimport os\nfrom urllib.request import Request, urlopen\n\
+    import pytest\nfrom refunds.service import list_refunds, group_refunds, get_visible_execution\n\
+    \n\n@pytest.fixture\ndef snapshot():\n    with urlopen(Request(os.environ[\"WORLD_URL\"\
+    ], data=b\"{}\", headers={\"Content-Type\": \"application/json\"}), timeout=3)\
+    \ as r:\n        return json.load(r)\n\n\ndef test_exact_selected_set(snapshot):\n\
+    \    assert sorted(r[\"exec_id\"] for r in list_refunds(snapshot)) == [\"E01\"\
+    , \"E02\", \"E05\"]\n\n\ndef test_failed_execution_remains_queryable(snapshot):\n\
+    \    row = get_visible_execution(snapshot, \"E01\")\n    assert row is not None\
+    \ and row[\"execution_result\"] == \"FAILED\"\n\n\ndef test_same_application_keeps_distinct_executions(snapshot):\n\
+    \    assert [r[\"exec_id\"] for r in group_refunds(snapshot)[\"S01\"]] == [\"\
+    E01\", \"E02\"]\n"
+  test_B.py: "import json\nimport os\nfrom urllib.request import Request, urlopen\n\
+    import pytest\nfrom refunds.service import list_refunds, group_refunds, get_visible_execution\n\
+    \n\n@pytest.fixture\ndef snapshot():\n    with urlopen(Request(os.environ[\"WORLD_URL\"\
+    ], data=b\"{}\", headers={\"Content-Type\": \"application/json\"}), timeout=3)\
+    \ as r:\n        return json.load(r)\n\n\ndef test_exact_selected_set(snapshot):\n\
+    \    assert sorted(r[\"exec_id\"] for r in list_refunds(snapshot)) == [\"E01\"\
+    , \"E02\", \"E05\"]\n\n\ndef test_failed_execution_remains_queryable(snapshot):\n\
+    \    row = get_visible_execution(snapshot, \"E01\")\n    assert row is not None\
+    \ and row[\"execution_result\"] == \"FAILED\"\n\n\ndef test_same_application_keeps_distinct_executions(snapshot):\n\
+    \    assert [r[\"exec_id\"] for r in group_refunds(snapshot)[\"S01\"]] == [\"\
+    E01\", \"E02\"]\n"
+  test_C.py: "import json\nimport os\nfrom urllib.request import Request, urlopen\n\
+    import pytest\nfrom refunds.service import list_refunds, group_refunds, get_visible_execution\n\
+    \n\n@pytest.fixture\ndef snapshot():\n    with urlopen(Request(os.environ[\"WORLD_URL\"\
+    ], data=b\"{}\", headers={\"Content-Type\": \"application/json\"}), timeout=3)\
+    \ as r:\n        return json.load(r)\n\n\ndef test_exact_selected_set(snapshot):\n\
+    \    assert sorted(r[\"exec_id\"] for r in list_refunds(snapshot)) == [\"E01\"\
+    , \"E02\", \"E05\"]\n\n\ndef test_failed_execution_remains_queryable(snapshot):\n\
+    \    row = get_visible_execution(snapshot, \"E01\")\n    assert row is not None\
+    \ and row[\"execution_result\"] == \"FAILED\"\n\n\ndef test_same_application_keeps_distinct_executions(snapshot):\n\
+    \    assert [r[\"exec_id\"] for r in group_refunds(snapshot)[\"S01\"]] == [\"\
+    E01\", \"E02\"]\n"

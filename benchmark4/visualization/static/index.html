@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CodeTeamMem · 状态观测台</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><span class="brand-icon">M</span><div>CodeTeamMem<small>BENCHMARK OBSERVATORY</small></div></div>
+  <div class="side-label">工作空间</div><div class="nav-active"><span>◈</span> 状态观测台 <span class="nav-dot"></span></div>
+  <a class="records-link" href="/records">↗ 调用详情 / Prompts</a>
+  <div class="side-label runs-heading">运行记录 <span id="run-count">0</span></div>
+  <div id="run-list" class="run-list"><p class="muted">正在连接本地服务…</p></div>
+  <div class="sidebar-bottom"><span class="read-dot"></span> 只读观察模式<small>流程由会话中的控制命令推进</small></div>
+</aside>
+<main>
+  <header><div class="breadcrumb">BENCHMARK <span>/</span> PIPELINE MONITOR</div><div id="connection" class="connection" role="status">连接中</div></header>
+  <section class="page-title"><div><div class="eyebrow">LIVE STATE OBSERVABILITY</div><h1>每一步，都有迹可循<span class="title-dot">.</span></h1><p>追踪构造阶段、协作轮次与每一次状态变化。</p></div><div class="read-badge">◉ READ ONLY</div></section>
+  <div id="empty" class="empty"><span>◈</span><h2>等待第一条运行记录</h2><p>在会话中创建离线演示或接入已有 Case，进度将在这里实时出现。</p><code>python3 -m benchmark4.visualization.control create --demo</code></div>
+  <div id="workspace" hidden>
+    <section class="run-bar"><div><span class="field-label">运行</span><strong id="run-id">—</strong><span id="source" class="source-pill"></span></div><label><span class="field-label">CASE</span><select id="case-select" aria-label="选择 Case"></select></label><span id="updated" class="last-update">—</span></section>
+    <section class="pipeline-panel panel"><div class="panel-heading"><div><span class="eyebrow">01 / FACTORY</span><h2>构造流水线</h2></div><span id="overall" class="status-pill">READY</span></div><div id="stages" class="stages"></div><div class="pipeline-foot"><span><i class="legend done"></i>已完成</span><span><i class="legend active"></i>当前阶段</span><span><i class="legend pending"></i>尚未开始</span><span id="completed">0 / 4 阶段完成</span></div></section>
+    <div class="detail-grid">
+      <div class="left-column">
+        <section class="panel collaboration"><div class="panel-heading"><div><span class="eyebrow">02 / COLLABORATION</span><h2>协作流进度</h2></div><span class="quiet-label">逐轮观察</span></div>
+          <div class="numbers"><div><span class="field-label">当前幕</span><strong id="act">—</strong></div><div><span class="field-label">本幕已完成轮次</span><strong id="turn">—</strong></div><div><span class="field-label">累计轮次</span><strong id="turns">—</strong></div></div>
+          <div class="condition"><div><span class="field-label">退出条件</span><span id="exit-condition">未产生</span></div><span id="exit-met" class="small-pill">未产生</span></div>
+          <p id="round-detail" class="round-detail">Stage 3 开始后显示幕与轮次信息。</p>
+          <details><summary>本轮可见事实 <span id="fact-count">0</span></summary><div id="facts" class="facts"></div></details>
+        </section>
+        <section class="panel dialogue-panel"><div class="panel-heading"><div><span class="eyebrow">03 / STREAM</span><h2>已产生的协作内容</h2></div><span id="dialogue-count" class="quiet-label">0 轮</span></div><div id="dialogue" class="dialogue"><p class="placeholder">尚未产生对话，未来轮次不会提前展示。</p></div></section>
+        <section class="panel result-panel"><div class="panel-heading"><div><span class="eyebrow">04 / EVIDENCE</span><h2>阶段结果</h2></div></div><div id="results"><p class="placeholder">未产生。完成阶段后显示来源与校验结果。</p></div></section>
+      </div>
+      <div class="right-column">
+        <section id="notice" class="notice"><div class="notice-label">等待会话指令</div><h3 id="notice-title">准备就绪</h3><p id="notice-text">在会话中推进下一步，页面会自动更新。</p><div class="failure-count">阶段失败次数 <strong id="failure-count">0</strong><span>/ 2 次触发熔断</span></div></section>
+        <section class="panel timeline-panel"><div class="panel-heading"><div><span class="eyebrow">EVENT JOURNAL</span><h2>流转时间线</h2></div><span id="event-count" class="quiet-label">0 条</span></div><div id="timeline" class="timeline"></div></section>
+      </div>
+    </div>
+    <footer><span>所有状态来自已记录事件 · 缺失结果不补零</span><span>本地服务 / 1s 增量刷新</span></footer>
+  </div>
+</main>
+</body></html>

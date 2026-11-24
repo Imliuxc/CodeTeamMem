@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=docker.m.daocloud.io/library/python:3.12-bookworm
+FROM ${BASE_IMAGE}
+RUN pip install --no-cache-dir pytest==8.4.2
+RUN useradd --create-home worker
+USER worker
+WORKDIR /home/worker/workspace
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Mount only the selected case repository here; never service source/config.
+CMD ["python", "--version"]
